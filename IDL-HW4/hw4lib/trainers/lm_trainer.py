@@ -58,7 +58,7 @@ class LMTrainer(BaseTrainer):
             label_smoothing=self.config['loss']['label_smoothing']
         )
         # Initialize a single GradScaler and autocast flag (avoid recreating per batch)
-        self.scaler = torch.cuda.amp.GradScaler(enabled=self.autocast_enabled)
+        self.scaler = torch.cuda.amp.GradScaler()
 
     def _train_epoch(self, dataloader) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
         """
