@@ -283,8 +283,8 @@ class LMTrainer(BaseTrainer):
             # Save attention plots
             train_attn_keys = list(train_attn.keys())
             val_attn_keys = list(val_attn.keys())
-            self._save_attention_plot(train_attn[train_attn_keys[0]][0], epoch, "train_self")
-            self._save_attention_plot(val_attn[val_attn_keys[0]][0], epoch, "val_self")
+            # self._save_attention_plot(train_attn[train_attn_keys[0]][0], epoch, "train_self")
+            # self._save_attention_plot(val_attn[val_attn_keys[0]][0], epoch, "val_self")
 
             # Save generated text
             self._save_generated_text(gen_results, f'val_epoch_{epoch}')
@@ -323,7 +323,7 @@ class LMTrainer(BaseTrainer):
 
         # Save attention plots
         test_attn_keys = list(test_attn.keys())
-        self._save_attention_plot(test_attn[test_attn_keys[0]][0], self.current_epoch, "test_self")
+        # self._save_attention_plot(test_attn[test_attn_keys[0]][0], self.current_epoch, "test_self")
 
         # Generate with evaluation configs and collect results
         generation_results = {}
