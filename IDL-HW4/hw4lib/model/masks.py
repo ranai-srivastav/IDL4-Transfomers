@@ -25,8 +25,13 @@ def PadMask(padded_input, input_lengths):
             - padding positions are marked with True 
             - non-padding positions are marked with False.
     """
-    # TODO: Implement PadMask
-    raise NotImplementedError # Remove once implemented
+    N, T = padded_input.shape[:2]
+    mask = torch.zeros((N, T), dtype=torch.bool, device=padded_input.device)
+    for sample_idx in range(N):
+        mask[sample_idx, input_lengths[sample_idx]:] = True
+        
+    return mask
+        
 
 ''' 
 TODO: Implement this function.
@@ -51,6 +56,9 @@ def CausalMask(padded_input):
             - non-causal positions (don't attend to) are marked with True 
             - causal positions (can attend to) are marked with False.
     """
-    # TODO: Implement CausalMask
-    raise NotImplementedError # Remove once implemented
+    N, T = padded_input.shape[:2]
+    device = padded_input.device
+    mask = torch.ones((T, T), dtype=torch.bool, device=device)
+    torch.triu(mask, 1, out=mask)
 
+    return mask
