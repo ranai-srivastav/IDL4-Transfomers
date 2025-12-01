@@ -57,7 +57,8 @@ class LMTrainer(BaseTrainer):
             ignore_index=self.tokenizer.pad_id,
             label_smoothing=self.config['loss']['label_smoothing']
         )
-        
+        # Initialize a single GradScaler and autocast flag (avoid recreating per batch)
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.autocast_enabled)
 
     def _train_epoch(self, dataloader) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
         """
@@ -75,8 +76,8 @@ class LMTrainer(BaseTrainer):
         running_ce_loss = 0.0
         total_tokens = 0
 
-        # Only zero gradients when starting a new accumulation cycle
-        self.optimizer.zero_grad()
+        # Zero grads upfront; set_to_none helps memory
+        self.optimizer.zero_grad(set_to_none=True)
 
         for i, batch in enumerate(dataloader):
             # TODO: Unpack batch from the dataloader
@@ -107,8 +108,7 @@ class LMTrainer(BaseTrainer):
             # Normalize loss for gradient accumulation
             loss = raw_loss / self.config['training']['gradient_accumulation_steps']
             
-            # TODO: Backpropagate the loss
-            self.scaler = torch.GradScaler()
+            # Backprop with existing scaler (do not recreate each step)
             self.scaler.scale(loss).backward()
         
             # Only update weights after accumulating enough gradients
@@ -118,7 +118,13 @@ class LMTrainer(BaseTrainer):
                 if not isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     self.scheduler.step()
                 self.scaler.update()
-                self.optimizer.zero_grad()  # Reset gradients after update
+                self.optimizer.zero_grad(set_to_none=True)  # Reset gradients after update
+
+            # Detach attention weights to avoid holding computation graph/GPU mem
+            if isinstance(attn_weights, dict):
+                attn_weights = {k: v.detach().cpu() for k, v in attn_weights.items()}
+            elif isinstance(attn_weights, torch.Tensor):
+                attn_weights = attn_weights.detach().cpu()
 
             # Calculate metrics
             avg_ce_loss = running_ce_loss / total_tokens
@@ -141,7 +147,7 @@ class LMTrainer(BaseTrainer):
             if not isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 self.scheduler.step()
             self.scaler.update()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
 
         # Compute final metrics
         avg_ce_loss = running_ce_loss / total_tokens
@@ -194,6 +200,12 @@ class LMTrainer(BaseTrainer):
                 # Would you need to change the shape of the inputs to the criterion?
                 # Hint: See the documentation for CrossEntropyLoss
                 loss = self.criterion(raw_preds.transpose(1, 2), targets_golden)
+
+            # Detach attention weights to CPU
+            if isinstance(attn_weights, dict):
+                attn_weights = {k: v.detach().cpu() for k, v in attn_weights.items()}
+            elif isinstance(attn_weights, torch.Tensor):
+                attn_weights = attn_weights.detach().cpu()
 
             # Calculate metrics
             batch_tokens = lengths.sum().item()
