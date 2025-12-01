@@ -123,6 +123,9 @@ def main():
     '''
     Main function to run the tests.
     '''
+    import os, sys
+    sys.path.append("/home/ranai/MRSD/idl/hw4/IDL4-Transfomers/IDL-HW4/")
+    sys.path.append("/home/ranai/MRSD/idl/hw4/IDL4-Transfomers/IDL-HW4/hw4lib")
     from hw4lib.model import SelfAttentionDecoderLayer
     from tests.testing_framework import TestingFramework
 

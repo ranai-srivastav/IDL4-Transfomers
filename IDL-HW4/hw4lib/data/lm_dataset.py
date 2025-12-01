@@ -8,7 +8,6 @@ from torch.nn.utils.rnn import pad_sequence
 from .tokenizer import H4Tokenizer
 
 DEBUG = True
-SUBSET_RATIO = 0.1
 
 '''
 Specification:
@@ -60,11 +59,11 @@ class LMDataset(Dataset):
         self.pad_token = self.tokenizer.pad_id
 
         # Set up data paths 
-        self.text_dir = f"hw4_data_subset/hw4p1_data/{partition}" 
+        self.text_dir = f"{config['root']}/{partition}" 
 
         self.text_files = sorted(os.listdir(self.text_dir))
 
-        subset_size = int(SUBSET_RATIO * len(self.text_files))
+        subset_size = int(config["subset"] * len(self.text_files))
         self.text_files = self.text_files[:subset_size]
 
         # Initialize lists to store transcripts
@@ -115,12 +114,6 @@ class LMDataset(Dataset):
         
         # TODO: Store the length of the dataset
         self.length = len(self.transcripts_golden)
-        
-        if DEBUG:
-            print(f"len(shifted): {len(self.transcripts_shifted)}")
-            print(f"len(golden): {len(self.transcripts_golden)}")
-            print(f"golden[0]: {self.transcripts_golden[0]}")
-            print(f"shifted[0]: {self.transcripts_shifted[0]}")
         
     def get_avg_chars_per_token(self) -> float:
         '''

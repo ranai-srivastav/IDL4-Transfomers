@@ -66,21 +66,17 @@ class SelfAttentionLayer(nn.Module):
         # TODO: Implement forward: Follow the figure in the writeup
         post_norm = self.norm(x)
         
-        # TODO: Self-attention
-        # Be sure to use the correct arguments for the multi-head attention layer
-        # Set need_weights to True and average_attn_weights to True so we can get the attention weights 
-        mha_attn_out, mha_attn_weights = self.mha(query=post_norm,
-                                       key=x,
-                                       value=x,
-                                       key_padding_mask=key_padding_mask,
-                                       attn_mask=attn_mask,
-                                       need_weights=True,
-                                       average_attn_weights=True)
-        
-        # NOTE: For some regularization you can apply dropout and then add residual connection
+        # Use post-norm for query, key, and value to keep shapes consistent and batched
+        mha_attn_out, mha_attn_weights = self.mha(
+            query=post_norm,
+            key=post_norm,
+            value=post_norm,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            need_weights=True,
+            average_attn_weights=True,
+        )
         layer_out = x + self.dropout(mha_attn_out)
-        
-        # TODO: Return the output tensor and attention weights
         return layer_out, mha_attn_weights
     
 ## -------------------------------------------------------------------------------------------------  
@@ -219,4 +215,4 @@ class FeedForwardLayer(nn.Module):
         
         
         return x
-    
+

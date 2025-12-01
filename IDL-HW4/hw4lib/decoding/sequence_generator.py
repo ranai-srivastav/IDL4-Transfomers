@@ -164,8 +164,33 @@ class SequenceGenerator:
         if self.max_length < x.size(1):
             raise ValueError("max_length must be >= input sequence length")
         
-        # TODO: Implement greedy search
-        raise NotImplementedError # Remove once implemented
+        scores = torch.zeros(x.size(0), device=x.device)
+        finished = torch.zeros(x.size(0), dtype=torch.bool, device=x.device)
+        
+        for t in range(self.max_length - x.size(1)):
+            # Check if all sequences have finished
+            if torch.all(finished):
+                break
+
+            # Get logits and apply repetition penalty
+            next_scores = self.score_fn(x)  # (batch_size, vocab_size)
+            next_scores = self._apply_repeat_penalty(next_scores, x, repeat_penalty)
+            
+            # Select the token with highest score
+            next_tokens = torch.argmax(next_scores, dim=-1)  # (batch_size,)
+            token_scores = torch.gather(next_scores, 1, next_tokens.unsqueeze(1)).squeeze(1)  # (batch_size,)
+
+            # Update scores only for unfinished sequences
+            scores = torch.where(finished, scores, scores + token_scores)
+
+            # Append next tokens
+            x = torch.cat([x, next_tokens.unsqueeze(1)], dim=1)  # (batch_size, seq_len + 1)
+
+            # Check if any sequence has reached EOS 
+            is_eos = (next_tokens == self.tokenizer.eos_id)
+            finished = finished | is_eos
+        
+        return x, scores
 
     def generate_beam(
             self,
@@ -196,8 +221,7 @@ class SequenceGenerator:
         if self.max_length < x.size(1):
             raise ValueError("max_length must be >= input sequence length")
         
-        # TODO: Implement beam search
-        raise NotImplementedError # Remove once implemented
+        raise NotImplementedError("Beam search generation is not yet implemented.")
 
     def generate_sample(
             self,

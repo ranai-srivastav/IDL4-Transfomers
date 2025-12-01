@@ -5,7 +5,6 @@ def test_decoder_only_transformer(transformer):
     '''
     Test the decoder only transformer
     '''
-    
     # Structural tests
     test_initialization(transformer)
 
@@ -95,6 +94,7 @@ def test_forward_pass(transformer):
     # Forward pass
     output, attention_weights = model(targets, target_lengths)
     
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Outputs generated")
     # Check output shape
     expected_shape = (batch_size, seq_length, num_classes)
     assert output.shape == expected_shape, f"Output shape mismatch: expected {expected_shape}, got {output.shape}"
@@ -192,6 +192,10 @@ def main():
     '''
     Main function to run the tests
     '''
+    import os
+    import sys
+    sys.path.append("/home/ranai/MRSD/idl/hw4/IDL4-Transfomers/IDL-HW4/hw4lib")
+    sys.path.append("/home/ranai/MRSD/idl/hw4/IDL4-Transfomers/IDL-HW4/")
     from hw4lib.model import DecoderOnlyTransformer
     from tests.testing_framework import TestingFramework
 

@@ -107,7 +107,6 @@ class DecoderOnlyTransformer(nn.Module):
             layer_drop_rate: float, layer drop rate (default: 0.0)
         '''
         super().__init__()
-        
         # TODO: Implement __init__
 
         # Initialize the decoder
@@ -146,14 +145,13 @@ class DecoderOnlyTransformer(nn.Module):
         if self.training and target_lengths is None:
             raise ValueError("target_lengths must be provided during training")
         
-
         # TODO: Create padding mask for padded_targets on the same device as the input (use PadMask)
-        pad_mask_dec = torch.zeros_like(padded_targets, dtype=torch.bool)
+        pad_mask_dec = None
         if target_lengths is not None:
-            pad_mask_dec = PadMask(padded_targets, target_lengths)
+            pad_mask_dec = PadMask(padded_targets, target_lengths).to(device=padded_targets.device)
         
         # TODO: Create causal mask to prevent attending to future tokens on the same device as the input (use CausalMask)
-        causal_mask = CausalMask(padded_targets)
+        causal_mask = CausalMask(padded_targets).to(device=padded_targets.device)
 
         # TODO: Apply the embedding
         embs = self.target_embedding(padded_targets)
@@ -177,6 +175,7 @@ class DecoderOnlyTransformer(nn.Module):
 
         # TODO: Apply normalization
         norm_dec = self.norm(dec_embs_pe)
+        
         # TODO: Linear layer (Final Projection) for next character prediction
         seq_out = self.final_linear(norm_dec)
         
