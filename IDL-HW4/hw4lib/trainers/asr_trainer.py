@@ -105,41 +105,51 @@ class ASRTrainer(BaseTrainer):
             # TODO: Unpack batch and move to device
             feats, targets_shifted, targets_golden, feat_lengths, transcript_lengths = batch
             feats = feats.to(device=self.device) 
-            targets_shifted = targets_shifted.to(device=self.device)
-            targets_golden = targets_golden.to(device=self.device)
+            targets_shifted = targets_shifted.to(device=self.device) if targets_shifted is not None else None
+            targets_golden = targets_golden.to(device=self.device) if targets_golden is not None else None
             feat_lengths = feat_lengths.to(device=self.device)
             transcript_lengths = transcript_lengths.to(device=self.device)
-            print(feats.shape)
-            print(targets_shifted.shape)
-            print(targets_golden.shape)
-            print(transcript_lengths.shape)
 
             # TODO: get raw predictions and attention weights and ctc inputs from model
             seq_out, curr_att, ctc_inputs = self.model(feats, 
                                                         targets_shifted, 
                                                         feat_lengths, 
                                                         transcript_lengths)
+
+            # Prepare CTC targets: concatenate unpadded targets into 1D
+            # CTCLoss requires targets = torch.int32 or int64 and 1D
+            pad_id = self.tokenizer.pad_id
+            ctc_target_list = []
+            for b in range(targets_golden.size(0)):
+                valid = targets_golden[b][:transcript_lengths[b]].tolist()
+                # In case PADs exist within valid region, filter them
+                valid = [t for t in valid if t != pad_id]
+                ctc_target_list.extend(valid)
+            ctc_targets = torch.tensor(ctc_target_list, dtype=torch.long, device=self.device)
+            ctc_target_lengths = transcript_lengths.to(dtype=torch.long)
+
             
             # Update running_att with the latest attention weights
             running_att = curr_att
             
-            # TODO: Calculate CE loss
+            # CE loss over padded sequence (ignore_index handles PAD)
             ce_loss = self.ce_criterion(seq_out.view(-1, seq_out.size(-1)), targets_golden.view(-1))
-            
-            
-            # TODO: Calculate CTC loss if needed
+
+            # CTC loss (log_probs are already log-softmaxed by the ctc_head)
+            # Shapes: log_probs: (T, N, C), input_lengths: (N,), target_lengths: (N,)
+            ctc_loss = torch.tensor(0.0, device=self.device)
             if self.ctc_weight > 0:
                 ctc_loss = self.ctc_criterion(
-                    F.log_softmax(ctc_inputs["log_probs"], dim=-1).transpose(0, 1),  # T x B x C
-                    targets_golden,
-                    ctc_inputs["lengths"],
-                    transcript_lengths
+                    ctc_inputs["log_probs"],              # T x B x C (log-softmax already applied)
+                    ctc_targets,                          # 1D concatenated targets
+                    ctc_inputs["lengths"].to(torch.long), # (B,)
+                    ctc_target_lengths                    # (B,)
                 )
                 loss = ce_loss + self.ctc_weight * ctc_loss
             else:
-                ctc_loss = torch.tensor(0.0)
                 loss = ce_loss
-
+                
+                
             # Calculate metrics
             batch_tokens = transcript_lengths.sum().item()
             total_tokens += batch_tokens
@@ -414,6 +424,9 @@ class ASRTrainer(BaseTrainer):
                 # TODO: Unpack batch and move to device
                 # TODO: Handle both cases where targets may or may not be None (val set v. test set) 
                 feats, _, targets_golden, feat_lengths, _ = batch
+                feats = feats.to(device=self.device) 
+                targets_golden = targets_golden.to(device=self.device) if targets_golden is not None else None
+                feat_lengths = feat_lengths.to(device=self.device)
                 
                 # TODO: Encode speech features to hidden states
                 encoder_output, pad_mask_src, _, _ = self.model.encode(feats, feat_lengths)
@@ -440,6 +453,7 @@ class ASRTrainer(BaseTrainer):
                 if recognition_config['beam_width'] > 1:
                     seqs, scores = generator.generate_beam(
                         prompts,
+                        beam_width=recognition_config['beam_width'],
                     )
                     # Pick best beam
                     seqs = seqs[:, 0, :]
