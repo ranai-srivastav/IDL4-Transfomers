@@ -112,6 +112,10 @@ class LMDataset(Dataset):
         if not (len(self.transcripts_shifted) == len(self.transcripts_golden)):
             raise ValueError("Shifted and golden transcripts are misaligned")
         
+        print((len(self.transcripts_golden), len(self.transcripts_golden[0])))
+        print((len(self.transcripts_shifted), len(self.transcripts_shifted[0])))
+        print((len(self.feats), self.feats[0].shape))
+        
         # TODO: Store the length of the dataset
         self.length = len(self.transcripts_golden)
         

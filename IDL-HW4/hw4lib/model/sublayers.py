@@ -140,9 +140,9 @@ class CrossAttentionLayer(nn.Module):
         # TODO: Cross-attention
         # Be sure to use the correct arguments for the multi-head attention layer
         # Set need_weights to True and average_attn_weights to True so we can get the attention weights 
-        mha_attention_out, mha_attn_weights = self.mha(key=post_norm_x,
-                                       query=post_norm_y,
-                                       value=post_norm_x,
+        mha_attention_out, mha_attn_weights = self.mha(query=post_norm_x,
+                                       key=post_norm_y,
+                                       value=post_norm_y,
                                        key_padding_mask=key_padding_mask,
                                        need_weights=True,
                                        attn_mask=attn_mask)
